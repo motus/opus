@@ -86,6 +86,18 @@ silk_sources_sse4_1 = [
   'x86/VQ_WMat_EC_sse4_1.c',
 ]
 
+silk_sources_neon_intr = [
+  'arm/arm_silk_map.c',
+  'arm/biquad_alt_neon_intr.c',
+  'arm/LPC_inv_pred_gain_neon_intr.c',
+  'arm/NSQ_del_dec_neon_intr.c',
+  'arm/NSQ_neon.c',
+]
+
+silk_sources_fixed_neon_intr = [
+  'fixed/arm/warped_autocorrelation_FIX_neon_intr.c',
+]
+
 silk_sources_fixed = [
   'fixed/LTP_analysis_filter_FIX.c',
   'fixed/LTP_scale_ctrl_FIX.c',
@@ -150,20 +162,30 @@ silk_sources_float = [
 
 if opt_fixed_point
   silk_sources += silk_sources_fixed
-  if may_have_sse4_1
-    silk_sources += silk_sources_sse4_1
-    silk_sources += silk_sources_fixed_sse4_1
-  endif
 else
   silk_sources += silk_sources_float
-  if may_have_sse4_1
-    silk_sources += silk_sources_sse4_1
-  endif
 endif
 
-if host_machine.cpu_family() == 'arm' # was: cpu_arm # FIXME: should only be used if intrinsics or asm is enabled
-  silk_sources += silk_sources_arm
-endif
+silk_includes = [opus_includes, include_directories('float', 'fixed')]
+silk_static_libs = []
+
+foreach intr_name : ['sse4_1', 'neon_intr']
+  have_intr = get_variable('have_' + intr_name)
+  if not have_intr
+    continue
+  endif
+
+  intr_sources = get_variable('silk_sources_' + intr_name)
+  if opt_fixed_point
+    intr_sources += get_variable('silk_sources_fixed_' + intr_name)
+  endif
+
+  intr_args = get_variable('opus_@0@_args'.format(intr_name), [])
+  silk_static_libs += static_library('silk_' + intr_name, intr_sources,
+      c_args: intr_args,
+      include_directories: silk_includes,
+      install: false)
+endforeach
 
 silk_c_args = []
 if host_machine.system() == 'windows'
@@ -172,8 +194,8 @@ endif
 
 silk_lib = static_library('opus-silk',
   silk_sources,
-  c_args: opus_c_args + silk_c_args,
-  include_directories: [opus_includes, include_directories('float', 'fixed')],
-  #link_with: opus_armasm_lib,
+  c_args: silk_c_args,
+  include_directories: silk_includes,
+  link_whole: silk_static_libs,
   dependencies: libm,
   install: false)

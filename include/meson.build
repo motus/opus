@@ -1,6 +1,7 @@
 opus_headers = [
   'opus.h',
   'opus_multistream.h',
+  'opus_projection.h',
   'opus_types.h',
   'opus_defines.h',
 ]
@@ -10,4 +11,3 @@ if opt_custom_modes
 endif
 
 install_headers(opus_headers, subdir: 'opus')
-
