@@ -1,44 +1,12 @@
-celt_sources = [
-  'bands.c',
-  'celt.c',
-  'celt_encoder.c',
-  'celt_decoder.c',
-  'cwrs.c',
-  'entcode.c',
-  'entdec.c',
-  'entenc.c',
-  'kiss_fft.c',
-  'laplace.c',
-  'mathops.c',
-  'mdct.c',
-  'modes.c',
-  'pitch.c',
-  'celt_lpc.c',
-  'quant_bands.c',
-  'rate.c',
-  'vq.c',
-]
+celt_sources = sources['CELT_SOURCES']
 
-celt_sse_sources = [
-  'x86/x86cpu.c',
-  'x86/x86_celt_map.c',
-  'x86/pitch_sse.c',
-]
+celt_sse_sources = sources['CELT_SOURCES_SSE']
 
-celt_sse2_sources = [
-  'x86/pitch_sse2.c',
-  'x86/vq_sse2.c',
-]
+celt_sse2_sources = sources['CELT_SOURCES_SSE2']
 
-celt_sse4_1_sources = [
-  'x86/celt_lpc_sse4_1.c',
-  'x86/pitch_sse4_1.c',
-]
+celt_sse4_1_sources = sources['CELT_SOURCES_SSE4_1']
 
-celt_neon_intr_sources = [
-  'arm/celt_neon_intr.c',
-  'arm/pitch_neon_intr.c',
-]
+celt_neon_intr_sources = sources['CELT_SOURCES_ARM_NEON_INTR']
 
 celt_static_libs = []
 
@@ -62,15 +30,9 @@ if (intrinsics_support.length() + asm_optimization.length() + inline_optimizatio
 endif
 
 if host_cpu_family in ['arm', 'aarch64'] and have_arm_intrinsics_or_asm
-  celt_sources +=  [
-    'arm/armcpu.c',
-    'arm/arm_celt_map.c',
-  ]
+  celt_sources +=  sources['CELT_SOURCES_ARM']
   if have_arm_ne10
-    celt_sources += [
-    'arm/celt_fft_ne10.c',
-    'arm/celt_mdct_ne10.c',
-  ]
+    celt_sources += sources['CELT_SOURCES_ARM_NE10']
   endif
   if opus_arm_external_asm
     arm2gnu = [find_program('arm/arm2gnu.pl')] + arm2gnu_args

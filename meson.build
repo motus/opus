@@ -546,6 +546,17 @@ else
   endif
 endif
 
+# extract source file lists from .mk files
+mk_files = ['silk_sources.mk', 'opus_headers.mk', 'opus_sources.mk', 'silk_headers.mk', 'celt_sources.mk', 'celt_headers.mk']
+lines = run_command('read-sources-list.py', mk_files, check: true).stdout().strip().split('\n')
+sources = {}
+foreach l : lines
+  a = l.split(' = ')
+  var_name = a[0]
+  file_list = a[1].split()
+  sources += {var_name: files(file_list)}
+endforeach
+
 subdir('include')
 subdir('silk')
 subdir('celt')

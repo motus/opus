@@ -224,6 +224,7 @@ EXTRA_DIST = opus.pc.in \
              cmake/OpusSources.cmake \
              cmake/config.h.cmake.in \
              cmake/vla.c \
+             read-sources-list.py \
              meson.build \
              meson_options.txt \
              include/meson.build \

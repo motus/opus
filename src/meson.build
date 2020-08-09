@@ -1,21 +1,6 @@
-opus_sources = [
-  'mapping_matrix.c',
-  'opus.c',
-  'opus_decoder.c',
-  'opus_encoder.c',
-  'opus_multistream.c',
-  'opus_multistream_encoder.c',
-  'opus_multistream_decoder.c',
-  'opus_projection_encoder.c',
-  'opus_projection_decoder.c',
-  'repacketizer.c',
-]
+opus_sources = sources['OPUS_SOURCES']
 
-opus_sources_float = [
-  'analysis.c',
-  'mlp.c',
-  'mlp_data.c',
-]
+opus_sources_float = sources['OPUS_SOURCES_FLOAT']
 
 if not disable_float_api
   opus_sources += opus_sources_float
