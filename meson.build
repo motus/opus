@@ -184,6 +184,22 @@ if opt_custom_modes
 endif
 
 rtcd_support = []
+# With GCC, Clang, ICC, etc, we differentiate between 'may support this SIMD'
+# and 'presume we have this SIMD' by checking whether the SIMD / intrinsics can
+# be compiled by the compiler as-is (presume) or with SIMD cflags (may have).
+# With MSVC, the compiler will always build SIMD/intrinsics targeting all
+# specific instruction sets supported by that version of the compiler. No
+# special arguments are ever needed. If runtime CPU detection is not disabled,
+# we must always assume that we only 'may have' it.
+opus_can_presume_simd = true
+if cc.get_argument_syntax() == 'msvc'
+  if opt_rtcd.disabled()
+    warning('Building with an MSVC-like compiler and runtime CPU detection is disabled. Outputs may not run on all @0@ CPUs.'.format(host_cpu_family))
+  else
+    opus_can_presume_simd = false
+  endif
+endif
+
 opus_arm_external_asm = false
 
 asm_tmpl = '''
@@ -242,14 +258,14 @@ if not opt_asm.disabled()
       # only use them after runtime detection.
       # The same rules apply for x86 assembly and intrinsics.
 
-      opus_arm_presume_edsp = opus_conf.has('OPUS_ARM_INLINE_EDSP')
-      opus_arm_may_have_edsp = opus_arm_presume_edsp
+      opus_arm_may_have_edsp = opus_conf.has('OPUS_ARM_INLINE_EDSP')
+      opus_arm_presume_edsp = opus_arm_may_have_edsp and opus_can_presume_simd
 
-      opus_arm_presume_media = opus_conf.has('OPUS_ARM_INLINE_MEDIA')
-      opus_arm_may_have_media = opus_arm_presume_media
+      opus_arm_may_have_media = opus_conf.has('OPUS_ARM_INLINE_MEDIA')
+      opus_arm_presume_media = opus_arm_may_have_media and opus_can_presume_simd
 
-      opus_arm_presume_neon = opus_conf.has('OPUS_ARM_INLINE_NEON')
-      opus_arm_may_have_neon = opus_arm_presume_neon
+      opus_arm_may_have_neon = opus_conf.has('OPUS_ARM_INLINE_NEON')
+      opus_arm_presume_neon = opus_arm_may_have_neon and opus_can_presume_simd
 
       if not opt_rtcd.disabled()
         if not opus_arm_may_have_edsp
@@ -344,7 +360,7 @@ if not opt_intrinsics.disabled()
     intrin_name = 'ARMv7/AArch64 NEON'
     if cc.links(intrin_check,
                 name: 'compiler supports @0@ intrinsics'.format(intrin_name))
-      opus_arm_presume_neon_intr = true
+      opus_arm_presume_neon_intr = opus_can_presume_simd
       opus_arm_may_have_neon_intr = true
     else
       opus_arm_presume_neon_intr = false
@@ -382,7 +398,7 @@ if not opt_intrinsics.disabled()
     intrin_name = 'AArch64 NEON'
     if cc.links(intrin_check,
                 name: 'compiler supports @0@ intrinsics'.format(intrin_name))
-      opus_arm_presume_aarch64_neon_intr = true
+      opus_arm_presume_aarch64_neon_intr = opus_can_presume_simd
       opus_arm_may_have_aarch64_neon_intr = true
     else
       opus_arm_presume_aarch64_neon_intr = false
@@ -407,10 +423,10 @@ if not opt_intrinsics.disabled()
   elif host_cpu_family in ['x86', 'x86_64']
     # XXX: allow external override/specification of the flags
     x86_intrinsics = [
-      [ 'SSE', 'xmmintrin.h', '__m128', '_mm_setzero_ps()', '-msse' ],
-      [ 'SSE2', 'emmintrin.h', '__m128i', '_mm_setzero_si128()', '-msse2' ],
-      [ 'SSE4.1', 'smmintrin.h', '__m128i', '_mm_setzero_si128(); mtest = _mm_cmpeq_epi64(mtest, mtest)', '-msse4.1' ],
-      [ 'AVX', 'immintrin.h', '__m256', '_mm256_setzero_ps()', '-mavx' ],
+      [ 'SSE', 'xmmintrin.h', '__m128', '_mm_setzero_ps()', ['-msse'] ],
+      [ 'SSE2', 'emmintrin.h', '__m128i', '_mm_setzero_si128()', ['-msse2'] ],
+      [ 'SSE4.1', 'smmintrin.h', '__m128i', '_mm_setzero_si128(); mtest = _mm_cmpeq_epi64(mtest, mtest)', ['-msse4.1'] ],
+      [ 'AVX', 'immintrin.h', '__m256', '_mm256_setzero_ps()', ['-mavx'] ],
     ]
 
     foreach intrin : x86_intrinsics
@@ -421,15 +437,16 @@ if not opt_intrinsics.disabled()
                           return *((unsigned char *) &mtest) != 0;
                         }'''.format(intrin[1],intrin[2],intrin[3])
       intrin_name = intrin[0]
-      intrin_args = intrin[4]
+      # Intrinsics arguments are not available with MSVC-like compilers
+      intrin_args = cc.get_argument_syntax() == 'msvc' ? [] : intrin[4]
       if cc.links(intrin_check, name : 'compiler supports @0@ intrinsics'.format(intrin_name))
         may_have_intrin = true
-        presume_intrin = true
-      else
+        presume_intrin = opus_can_presume_simd
+      elif intrin_args.length() > 0
         presume_intrin = false
         if cc.links(intrin_check,
                     args : intrin_args,
-                    name : 'compiler supports @0@ intrinsics with @1@'.format(intrin_name, intrin_args))
+                    name : 'compiler supports @0@ intrinsics with @1@'.format(intrin_name, ' '.join(intrin_args)))
           may_have_intrin = true
         else
           may_have_intrin = false
