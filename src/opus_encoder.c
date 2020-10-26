@@ -179,6 +179,11 @@ int opus_encoder_get_size(int channels)
     return align(sizeof(OpusEncoder))+silkEncSizeBytes+celtEncSizeBytes;
 }
 
+int opus_encoder_get_voice_ratio(OpusEncoder *st)
+{
+   return st->voice_ratio;
+}
+
 int opus_encoder_init(OpusEncoder* st, opus_int32 Fs, int channels, int application)
 {
     void *silk_enc;

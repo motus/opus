@@ -314,6 +314,10 @@ OPUS_EXPORT OPUS_WARN_UNUSED_RESULT opus_int32 opus_encode_float(
   */
 OPUS_EXPORT void opus_encoder_destroy(OpusEncoder *st);
 
+OPUS_EXPORT OPUS_WARN_UNUSED_RESULT int opus_encoder_get_voice_ratio(
+    OpusEncoder *st
+) OPUS_ARG_NONNULL(1);
+
 /** Perform a CTL function on an Opus encoder.
   *
   * Generally the request and subsequent arguments are generated

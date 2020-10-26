@@ -45,7 +45,7 @@
 void print_usage( char* argv[] )
 {
     fprintf(stderr, "Usage: %s [-e] <application> <sampling rate (Hz)> <channels (1/2)> "
-        "<bits per second>  [options] <input> <output>\n", argv[0]);
+        "<bits per second>  [options] <input> <output> <labels>\n", argv[0]);
     fprintf(stderr, "       %s -d <sampling rate (Hz)> <channels (1/2)> "
         "[options] <input> <output>\n\n", argv[0]);
     fprintf(stderr, "application: voip | audio | restricted-lowdelay\n" );
@@ -210,9 +210,10 @@ static OpusDecoder *ms_opus_decoder_create(opus_int32 Fs, int channels, int *err
 int main(int argc, char *argv[])
 {
     int err;
-    char *inFile, *outFile;
+    char *inFile, *outFile, *labelsFile;
     FILE *fin=NULL;
     FILE *fout=NULL;
+    FILE *flabels=NULL;
     OpusEncoder *enc=NULL;
     OpusDecoder *dec=NULL;
     int args;
@@ -265,7 +266,7 @@ int main(int argc, char *argv[])
     int delayed_decision=0;
     int ret = EXIT_FAILURE;
 
-    if (argc < 5 )
+    if (argc < 6 )
     {
        print_usage( argv );
        goto failure;
@@ -340,7 +341,7 @@ int main(int argc, char *argv[])
     use_dtx = 0;
     packet_loss_perc = 0;
 
-    while( args < argc - 2 ) {
+    while( args < argc - 3 ) {
         /* process command line options */
         if( strcmp( argv[ args ], "-cbr" ) == 0 ) {
             check_encoder_option(decode_only, "-cbr");
@@ -490,11 +491,11 @@ int main(int argc, char *argv[])
         goto failure;
     }
 
-    inFile = argv[argc-2];
+    inFile = argv[argc-3];
     fin = fopen(inFile, "rb");
     if (!fin)
     {
-        fprintf (stderr, "Could not open input file %s\n", argv[argc-2]);
+        fprintf (stderr, "Could not open input file %s\n", argv[argc-3]);
         goto failure;
     }
     if (mode_list)
@@ -508,11 +509,19 @@ int main(int argc, char *argv[])
        fprintf(stderr, "Switching mode every %d samples\n", mode_switch_time);
     }
 
-    outFile = argv[argc-1];
+    outFile = argv[argc-2];
     fout = fopen(outFile, "wb+");
     if (!fout)
     {
-        fprintf (stderr, "Could not open output file %s\n", argv[argc-1]);
+        fprintf (stderr, "Could not open output file %s\n", argv[argc-2]);
+        goto failure;
+    }
+
+    labelsFile = argv[argc-1];
+    flabels = fopen(labelsFile, "w+");
+    if (!flabels)
+    {
+        fprintf (stderr, "Could not open output file for labels %s\n", argv[argc-1]);
         goto failure;
     }
 
@@ -759,6 +768,8 @@ int main(int argc, char *argv[])
                fprintf(stderr, "Error writing.\n");
                goto failure;
             }
+            fprintf(flabels, "%ld %d\n",
+                ftell(fin), opus_encoder_get_voice_ratio(enc));
             tot_samples += nb_encoded;
         } else {
             opus_int32 output_samples;
@@ -885,6 +896,8 @@ failure:
         fclose(fin);
     if (fout)
         fclose(fout);
+    if (flabels)
+        fclose(flabels);
     free(in);
     free(out);
     free(fbytes);
